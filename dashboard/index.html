@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel — HSK Chain AI Trading Agent</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --card: #121722;
+    --card2: #0e1219;
+    --border: #1f2735;
+    --text: #dbe2ec;
+    --muted: #8b98a9;
+    --accent: #4da3ff;
+    --green: #3fb96f;
+    --red: #e5534b;
+    --amber: #d9a13b;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    padding: 20px 24px 6px;
+    max-width: 1080px; margin: 0 auto;
+  }
+  header h1 { font-size: 24px; margin: 0; letter-spacing: .2px; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .badge {
+    font-family: var(--mono); font-size: 12px; color: var(--accent);
+    border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px;
+    background: var(--card2);
+  }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--amber); vertical-align: middle; }
+  .dot.ok { background: var(--green); }
+  .dot.bad { background: var(--red); }
+  main { max-width: 1080px; margin: 0 auto; padding: 12px 24px 28px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px; margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .12em;
+    color: var(--muted); margin: 0 0 12px; font-weight: 600;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .grid .card { margin-bottom: 0; }
+  .gridwrap { margin-bottom: 16px; }
+  .convo { border-left: 3px solid var(--accent); background: var(--card2); }
+  .convo .who { color: var(--accent); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .1em; }
+  .convo p { margin: 6px 0 0; font-size: 16px; }
+  .price { font-family: var(--mono); font-size: 34px; font-weight: 600; }
+  .price small { font-size: 15px; color: var(--muted); font-weight: 400; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px dashed #1a2230; }
+  .kv:last-child { border-bottom: none; }
+  .kv .k { color: var(--muted); }
+  .kv .v { font-family: var(--mono); font-size: 13.5px; text-align: right; word-break: break-all; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .bar { height: 6px; background: #1a2230; border-radius: 3px; overflow: hidden; margin: 4px 0 10px; }
+  .bar > div { height: 100%; background: var(--accent); width: 0%; }
+  .bar.loss > div { background: var(--amber); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip { font-size: 12.5px; border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px; background: var(--card2); }
+  .chip.on { color: var(--red); border-color: var(--red); }
+  .chip.off { color: var(--green); }
+  .notice {
+    border: 1px dashed var(--amber); color: var(--amber); border-radius: 8px;
+    padding: 12px 14px; font-size: 14px; background: rgba(217,161,59,.06);
+  }
+  .notice code { font-family: var(--mono); color: var(--text); }
+  ul.feed { list-style: none; margin: 0; padding: 0; }
+  ul.feed li { padding: 9px 0; border-bottom: 1px solid #1a2230; }
+  ul.feed li:last-child { border-bottom: none; }
+  .feed .meta { color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
+  .feed .side { font-weight: 700; font-size: 12px; letter-spacing: .06em; }
+  .side.buy { color: var(--green); }
+  .side.sell { color: var(--red); }
+  .side.hold { color: var(--muted); }
+  .tag {
+    font-size: 11px; color: var(--amber); border: 1px solid var(--amber);
+    border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 1px;
+  }
+  .empty { color: var(--muted); font-size: 14px; }
+  canvas#spark { width: 100%; height: 54px; display: block; margin-top: 10px; }
+  footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 26px; color: var(--muted); font-size: 12.5px; }
+  a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Sentinel</h1>
+  <span class="badge">HSK Chain Testnet · chain 133</span>
+  <span class="sub">Autonomous trading agent with on-chain risk rails · HSKSwap V3</span>
+  <span class="sub" style="margin-left:auto">
+    <span class="dot" id="rpc-dot"></span>
+    <span id="rpc-status">connecting…</span>
+    · block <span id="block-num" style="font-family:var(--mono)">—</span>
+    · updated <span id="updated-at">—</span>
+  </span>
+</header>
+
+<main>
+  <!-- Conversational strip: the agent explains itself, from live state -->
+  <section class="card convo">
+    <span class="who">Sentinel, in its own words</span>
+    <p id="narration">Warming up — fetching the first live price…</p>
+  </section>
+
+  <div class="gridwrap"><div class="grid">
+    <!-- Live market status -->
+    <section class="card">
+      <h2>Market — USDT / WHSK</h2>
+      <div class="price"><span id="price">—</span> <small>USDT per WHSK</small></div>
+      <div class="kv"><span class="k">Inverse</span><span class="v" id="price-inv">—</span></div>
+      <div class="kv"><span class="k">Pool (fee 500 · 0.05%)</span><span class="v" id="pool-addr">—</span></div>
+      <div class="kv"><span class="k">QuoterV2</span><span class="v" id="quoter-addr">—</span></div>
+      <div class="kv"><span class="k">Signal (momentum + spread)</span><span class="v" id="signal-line">—</span></div>
+      <canvas id="spark" width="480" height="54"></canvas>
+    </section>
+
+    <!-- Guard / risk state -->
+    <section class="card">
+      <h2>SentinelGuard — risk rails</h2>
+      <div id="guard-body">
+        <div class="notice">Checking guard configuration…</div>
+      </div>
+    </section>
+  </div></div>
+
+  <!-- Trades or signal previews -->
+  <section class="card">
+    <h2 id="feed-title">Activity</h2>
+    <ul class="feed" id="feed"><li class="empty">Nothing yet — waiting for the first poll.</li></ul>
+  </section>
+</main>
+
+<footer>
+  Read-only dashboard: it only makes <span style="font-family:var(--mono)">eth_call</span> /
+  <span style="font-family:var(--mono)">eth_getLogs</span> requests against the public testnet RPC.
+  No wallet, no keys, no transactions. Prices come from HSKSwap's QuoterV2 on chain 133;
+  risk state comes from the SentinelGuard contract itself — the same numbers the contract enforces.
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
